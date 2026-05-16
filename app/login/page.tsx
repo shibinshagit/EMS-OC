@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { signIn } from 'next-auth/react';
+import { signIn, signOut } from 'next-auth/react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
@@ -11,22 +11,49 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 
 export default function LoginPage() {
   const router = useRouter();
-  const { status } = useSession();
+  const { data: session, status } = useSession();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const role = (session?.user as any)?.role as string | undefined;
 
   useEffect(() => {
     if (status === 'authenticated') {
-      router.replace('/dashboard');
+      if (role === 'super_admin') {
+        router.replace('/admin');
+      } else if (role === 'manager') {
+        router.replace('/manager');
+      } else if (role === 'employee') {
+        router.replace('/employee');
+      }
     }
-  }, [status, router]);
+  }, [status, role, router]);
 
-  if (status === 'authenticated') {
+  if (status === 'authenticated' && ['super_admin', 'manager', 'employee'].includes(role || '')) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
         <div className="text-sm text-slate-300">Redirecting...</div>
+      </div>
+    );
+  }
+
+  if (status === 'authenticated' && !['super_admin', 'manager', 'employee'].includes(role || '')) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
+        <Card className="w-full max-w-md border-slate-700/60 bg-slate-900/90 text-slate-100 shadow-2xl">
+          <CardHeader className="text-center">
+            <CardTitle className="text-xl">Session Issue</CardTitle>
+            <CardDescription className="text-slate-300">
+              Your account session is missing role information. Please sign in again.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button className="w-full" onClick={() => signOut({ callbackUrl: '/login' })}>
+              Re-login
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
