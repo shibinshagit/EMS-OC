@@ -1,0 +1,413 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import { useParams } from 'next/navigation';
+import Link from 'next/link';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Skeleton } from '@/components/ui/skeleton';
+
+interface Employee {
+  id: number;
+  user_id: number;
+  full_name: string;
+  email: string;
+  employee_code: string;
+  position: string;
+  company_name: string;
+  is_active: boolean;
+}
+
+interface AttendanceRecord {
+  id: number;
+  attendance_date: string;
+  check_in_time: string;
+  check_out_time: string | null;
+  duration_minutes: number | null;
+}
+
+interface LeaveRecord {
+  id: number;
+  leave_date: string;
+  leave_type: 'full_day' | 'half_day';
+  status: 'pending' | 'approved' | 'rejected';
+  reason: string | null;
+}
+
+interface ProjectRecord {
+  id: number;
+  name: string;
+  company_name: string;
+  manager_name: string;
+  is_active: boolean;
+  assigned_employee_ids: number[];
+}
+
+const WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+
+function dateKey(value: string) {
+  return value.slice(0, 10);
+}
+
+function dateKeyFromParts(year: number, month: number, day: number) {
+  return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+}
+
+export default function ManagerEmployeeDetailsPage() {
+  const params = useParams<{ id: string }>();
+  const employeeId = Number(params.id);
+
+  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [attendance, setAttendance] = useState<AttendanceRecord[]>([]);
+  const [leaves, setLeaves] = useState<LeaveRecord[]>([]);
+  const [projects, setProjects] = useState<ProjectRecord[]>([]);
+  const [monthCursor, setMonthCursor] = useState(new Date());
+  const [loading, setLoading] = useState(true);
+  const [calendarLoading, setCalendarLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const year = monthCursor.getFullYear();
+  const month = monthCursor.getMonth();
+
+  useEffect(() => {
+    if (!Number.isFinite(employeeId)) return;
+
+    const fetchStaticData = async () => {
+      setLoading(true);
+      setError('');
+      try {
+        const [empRes, leavesRes, projectsRes] = await Promise.all([
+          fetch(`/api/employees?id=${employeeId}`),
+          fetch(`/api/leave-requests?employee_id=${employeeId}`),
+          fetch('/api/projects'),
+        ]);
+
+        if (!empRes.ok) throw new Error('Failed to fetch employee details');
+        const employeeData = await empRes.json();
+        if (!Array.isArray(employeeData) || employeeData.length === 0) {
+          throw new Error('Employee not found');
+        }
+        setEmployee(employeeData[0]);
+
+        if (leavesRes.ok) setLeaves(await leavesRes.json());
+        if (projectsRes.ok) {
+          const allProjects = (await projectsRes.json()) as ProjectRecord[];
+          setProjects(
+            allProjects.filter((project) =>
+              Array.isArray(project.assigned_employee_ids) &&
+              project.assigned_employee_ids.includes(employeeId)
+            )
+          );
+        }
+      } catch (err: any) {
+        setError(err.message || 'Failed to load employee activity');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStaticData();
+  }, [employeeId]);
+
+  useEffect(() => {
+    if (!Number.isFinite(employeeId)) return;
+
+    const fetchAttendance = async () => {
+      setCalendarLoading(true);
+      try {
+        const monthNum = String(month + 1).padStart(2, '0');
+        const res = await fetch(`/api/attendance?employee_id=${employeeId}&month=${monthNum}&year=${year}`);
+        if (!res.ok) throw new Error('Failed to fetch attendance');
+        setAttendance(await res.json());
+      } catch (err: any) {
+        setError(err.message || 'Failed to load attendance');
+      } finally {
+        setCalendarLoading(false);
+      }
+    };
+
+    fetchAttendance();
+  }, [employeeId, month, year]);
+
+  const attendanceByDate = useMemo(() => {
+    const map = new Map<string, AttendanceRecord>();
+    attendance.forEach((record) => map.set(dateKey(record.attendance_date), record));
+    return map;
+  }, [attendance]);
+
+  const leavesByDate = useMemo(() => {
+    const map = new Map<string, LeaveRecord>();
+    leaves.forEach((record) => map.set(dateKey(record.leave_date), record));
+    return map;
+  }, [leaves]);
+
+  const calendarCells = useMemo(() => {
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells: Array<{ day: number | null; key: string }> = [];
+    for (let i = 0; i < firstDay; i++) cells.push({ day: null, key: `empty-${i}` });
+    for (let day = 1; day <= daysInMonth; day++) cells.push({ day, key: `day-${day}` });
+    return cells;
+  }, [month, year]);
+
+  const monthApprovedLeaves = useMemo(
+    () =>
+      leaves.filter(
+        (leave) =>
+          leave.status === 'approved' &&
+          new Date(leave.leave_date).getFullYear() === year &&
+          new Date(leave.leave_date).getMonth() === month
+      ).length,
+    [leaves, month, year]
+  );
+
+  const workedDays = attendance.filter((record) => (record.duration_minutes || 0) >= 480).length;
+  const halfDays = attendance.filter((record) => {
+    const minutes = record.duration_minutes || 0;
+    return minutes > 0 && minutes < 480;
+  }).length;
+
+  return (
+    <div className="space-y-6">
+      <Link href="/manager/team" className="text-blue-600 hover:underline block">
+        ← Back to Team
+      </Link>
+
+      {error && (
+        <div className="bg-red-50 text-red-700 p-4 rounded-md border border-red-200">
+          {error}
+        </div>
+      )}
+
+      <Card>
+        <CardHeader>
+          <CardTitle>{employee?.full_name || 'Employee Activity'}</CardTitle>
+          <CardDescription>
+            {employee
+              ? `${employee.employee_code} • ${employee.email} • ${employee.company_name}`
+              : 'Loading employee details...'}
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card>
+          <CardHeader>
+            <CardDescription>Worked Days</CardDescription>
+            <CardTitle>{loading || calendarLoading ? '-' : workedDays}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription>Half Days</CardDescription>
+            <CardTitle>{loading || calendarLoading ? '-' : halfDays}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription>Approved Leaves</CardDescription>
+            <CardTitle>{loading ? '-' : monthApprovedLeaves}</CardTitle>
+          </CardHeader>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardDescription>Assigned Projects</CardDescription>
+            <CardTitle>{loading ? '-' : projects.length}</CardTitle>
+          </CardHeader>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Monthly Activity Calendar</CardTitle>
+              <CardDescription>
+                {monthCursor.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+              </CardDescription>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" size="sm" onClick={() => setMonthCursor(new Date(year, month - 1, 1))}>
+                ← Prev
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setMonthCursor(new Date(year, month + 1, 1))}>
+                Next →
+              </Button>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {calendarLoading ? (
+            <>
+              <div className="grid grid-cols-7 gap-2">
+                {WEEK_DAYS.map((day) => (
+                  <Skeleton key={day} className="h-4 w-full" />
+                ))}
+              </div>
+              <div className="grid grid-cols-7 gap-2">
+                {Array.from({ length: 35 }).map((_, idx) => (
+                  <Skeleton key={`calendar-skeleton-${idx}`} className="h-20 w-full" />
+                ))}
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="grid grid-cols-7 gap-2 text-xs font-medium text-gray-600">
+                {WEEK_DAYS.map((day) => (
+                  <div key={day} className="text-center">{day}</div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-2">
+                {calendarCells.map((cell) => {
+                  if (!cell.day) return <div key={cell.key} className="h-20 border rounded-md bg-gray-50" />;
+
+                  const key = dateKeyFromParts(year, month, cell.day);
+                  const leave = leavesByDate.get(key);
+                  const dayAttendance = attendanceByDate.get(key);
+                  const dayOfWeek = new Date(year, month, cell.day).getDay();
+                  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+
+                  let label = 'Absent';
+                  let color = 'bg-red-100 text-red-700';
+                  if (leave && leave.status === 'approved') {
+                    label = leave.leave_type === 'half_day' ? 'Half Leave' : 'Leave';
+                    color = 'bg-yellow-100 text-yellow-700';
+                  } else if (dayAttendance?.duration_minutes && dayAttendance.duration_minutes >= 480) {
+                    label = 'Present';
+                    color = 'bg-green-100 text-green-700';
+                  } else if (dayAttendance?.duration_minutes) {
+                    label = 'Half Day';
+                    color = 'bg-blue-100 text-blue-700';
+                  } else if (leave && leave.status === 'pending') {
+                    label = 'Pending';
+                    color = 'bg-orange-100 text-orange-700';
+                  } else if (isWeekend) {
+                    label = 'Weekend';
+                    color = 'bg-gray-100 text-gray-600';
+                  }
+
+                  return (
+                    <div key={cell.key} className="h-20 border rounded-md p-2 flex flex-col justify-between">
+                      <span className="text-xs font-semibold text-gray-800">{cell.day}</span>
+                      <span className={`text-[10px] rounded px-1 py-0.5 text-center ${color}`}>{label}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Attendance Records</CardTitle>
+            <CardDescription>For selected month</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {attendance.length === 0 ? (
+              <div className="text-sm text-gray-600">No attendance records in this month.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>In</TableHead>
+                      <TableHead>Out</TableHead>
+                      <TableHead>Duration</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {attendance.map((record) => (
+                      <TableRow key={record.id}>
+                        <TableCell className="font-medium">{dateKey(record.attendance_date)}</TableCell>
+                        <TableCell>{new Date(record.check_in_time).toLocaleTimeString()}</TableCell>
+                        <TableCell>{record.check_out_time ? new Date(record.check_out_time).toLocaleTimeString() : '-'}</TableCell>
+                        <TableCell>{record.duration_minutes ?? '-'} min</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Leave Requests</CardTitle>
+            <CardDescription>Employee leave history</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {leaves.length === 0 ? (
+              <div className="text-sm text-gray-600">No leave records.</div>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Reason</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {leaves.map((leave) => (
+                      <TableRow key={leave.id}>
+                        <TableCell className="font-medium">{dateKey(leave.leave_date)}</TableCell>
+                        <TableCell>{leave.leave_type === 'full_day' ? 'Full Day' : 'Half Day'}</TableCell>
+                        <TableCell className="capitalize">{leave.status}</TableCell>
+                        <TableCell>{leave.reason || '-'}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Project Assignments</CardTitle>
+          <CardDescription>Projects where this employee is assigned</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {projects.length === 0 ? (
+            <div className="text-sm text-gray-600">No project assignments yet.</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Project</TableHead>
+                    <TableHead>Company</TableHead>
+                    <TableHead>Manager</TableHead>
+                    <TableHead>Status</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {projects.map((project) => (
+                    <TableRow key={project.id}>
+                      <TableCell className="font-medium">{project.name}</TableCell>
+                      <TableCell>{project.company_name}</TableCell>
+                      <TableCell>{project.manager_name || '-'}</TableCell>
+                      <TableCell>{project.is_active ? 'Active' : 'Inactive'}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
