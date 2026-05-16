@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { AppSidebar } from '@/components/app-sidebar';
-import { CheckCheck, FolderKanban, LayoutDashboard, UserRound, UsersRound } from 'lucide-react';
+import { CheckCheck, FolderKanban, LayoutDashboard, Menu, UserRound, UsersRound } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function ManagerLayout({
   children,
@@ -14,6 +15,7 @@ export default function ManagerLayout({
   const { data: session, status } = useSession();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [resolvedCompanyName, setResolvedCompanyName] = useState<string>('');
 
   useEffect(() => {
@@ -86,14 +88,25 @@ export default function ManagerLayout({
       <AppSidebar
         open={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
+        mobileOpen={mobileMenuOpen}
+        onMobileClose={() => setMobileMenuOpen(false)}
         navItems={navItems}
         userEmail={session?.user?.email}
       />
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto bg-gradient-to-b from-slate-50 to-slate-100/70">
-        <div className="mx-auto w-full max-w-7xl p-6 md:p-8">
-          <div className="mb-6 flex justify-end">
+        <div className="sticky top-0 z-30 flex items-center justify-between border-b border-slate-200/70 bg-slate-50/85 px-4 py-3 backdrop-blur md:hidden">
+          <Button variant="outline" size="icon" onClick={() => setMobileMenuOpen(true)}>
+            <Menu className="h-4 w-4" />
+          </Button>
+          <div className="inline-flex items-center rounded-full border border-slate-800/70 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 px-3 py-1.5 shadow-lg ring-1 ring-cyan-400/20">
+            <span className="mr-1 text-[10px] font-medium uppercase tracking-wide text-cyan-200/90">Team</span>
+            <span className="max-w-[150px] truncate text-xs font-semibold text-slate-100">{teamName}</span>
+          </div>
+        </div>
+        <div className="mx-auto w-full max-w-7xl p-4 md:p-8">
+          <div className="mb-6 hidden justify-end md:flex">
             <div className="inline-flex items-center rounded-full border border-slate-800/70 bg-gradient-to-r from-slate-950 via-slate-900 to-slate-950 px-4 py-2 shadow-lg ring-1 ring-cyan-400/20">
               <span className="mr-2 text-xs font-medium uppercase tracking-wide text-cyan-200/90">Team</span>
               <span className="text-sm font-semibold text-slate-100">{teamName}</span>

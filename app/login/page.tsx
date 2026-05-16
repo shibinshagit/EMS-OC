@@ -23,7 +23,13 @@ export default function LoginPage() {
     }
   }, [status, router]);
 
-  if (status === 'authenticated') return null;
+  if (status === 'authenticated') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
+        <div className="text-sm text-slate-300">Redirecting...</div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

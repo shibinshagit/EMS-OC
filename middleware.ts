@@ -12,6 +12,19 @@ export async function middleware(request: NextRequest) {
 
   const role = (token as any).role as string | undefined;
 
+  if (pathname.startsWith('/dashboard')) {
+    if (role === 'super_admin') {
+      return NextResponse.redirect(new URL('/admin', request.url));
+    }
+    if (role === 'manager') {
+      return NextResponse.redirect(new URL('/manager', request.url));
+    }
+    if (role === 'employee') {
+      return NextResponse.redirect(new URL('/employee', request.url));
+    }
+    return NextResponse.redirect(new URL('/login', request.url));
+  }
+
   if (pathname.startsWith('/admin') && role !== 'super_admin') {
     return NextResponse.redirect(new URL('/dashboard', request.url));
   }

@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { AppSidebar } from '@/components/app-sidebar';
-import { Building2, CheckCheck, FolderKanban, LayoutDashboard, ShieldUser, UserRound, Users } from 'lucide-react';
+import { Building2, CheckCheck, FolderKanban, LayoutDashboard, Menu, ShieldUser, UserRound, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 export default function AdminLayout({
   children,
@@ -14,6 +15,7 @@ export default function AdminLayout({
   const { data: session, status } = useSession();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   if (status === 'loading') {
     return (
@@ -49,13 +51,20 @@ export default function AdminLayout({
       <AppSidebar
         open={sidebarOpen}
         onToggle={() => setSidebarOpen(!sidebarOpen)}
+        mobileOpen={mobileMenuOpen}
+        onMobileClose={() => setMobileMenuOpen(false)}
         navItems={navItems}
         userEmail={session?.user?.email}
       />
 
       {/* Main Content */}
       <div className="flex-1 overflow-auto bg-gradient-to-b from-slate-50 to-slate-100/70">
-        <div className="mx-auto w-full max-w-7xl p-6 md:p-8">
+        <div className="sticky top-0 z-30 border-b border-slate-200/70 bg-slate-50/85 px-4 py-3 backdrop-blur md:hidden">
+          <Button variant="outline" size="icon" onClick={() => setMobileMenuOpen(true)}>
+            <Menu className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="mx-auto w-full max-w-7xl p-4 md:p-8">
           {children}
         </div>
       </div>
