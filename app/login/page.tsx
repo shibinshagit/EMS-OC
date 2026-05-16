@@ -16,29 +16,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const role = (session?.user as any)?.role as string | undefined;
-
-  useEffect(() => {
-    if (status === 'authenticated') {
-      if (role === 'super_admin') {
-        router.replace('/admin');
-      } else if (role === 'manager') {
-        router.replace('/manager');
-      } else if (role === 'employee') {
-        router.replace('/employee');
-      }
-    }
-  }, [status, role, router]);
-
-  if (status === 'authenticated' && ['super_admin', 'manager', 'employee'].includes(role || '')) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
-        <div className="text-sm text-slate-300">Redirecting...</div>
-      </div>
-    );
-  }
-
-  if (status === 'authenticated' && !['super_admin', 'manager', 'employee'].includes(role || '')) {
+  if (status === 'authenticated' && !(session?.user as any)?.role) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 flex items-center justify-center p-4">
         <Card className="w-full max-w-md border-slate-700/60 bg-slate-900/90 text-slate-100 shadow-2xl">
