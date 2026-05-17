@@ -220,7 +220,7 @@ export default function ManagerEmployeeDetailsPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>Monthly Activity Calendar</CardTitle>
               <CardDescription>
@@ -239,29 +239,32 @@ export default function ManagerEmployeeDetailsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {calendarLoading ? (
-            <>
-              <div className="grid grid-cols-7 gap-2">
-                {WEEK_DAYS.map((day) => (
-                  <Skeleton key={day} className="h-4 w-full" />
-                ))}
+            <div className="overflow-x-auto pb-2">
+              <div className="min-w-[680px] space-y-2">
+                <div className="grid grid-cols-7 gap-2">
+                  {WEEK_DAYS.map((day) => (
+                    <Skeleton key={day} className="h-4 w-full" />
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-2">
+                  {Array.from({ length: 35 }).map((_, idx) => (
+                    <Skeleton key={`calendar-skeleton-${idx}`} className="h-24 w-full md:h-20" />
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-7 gap-2">
-                {Array.from({ length: 35 }).map((_, idx) => (
-                  <Skeleton key={`calendar-skeleton-${idx}`} className="h-20 w-full" />
-                ))}
-              </div>
-            </>
+            </div>
           ) : (
-            <>
-              <div className="grid grid-cols-7 gap-2 text-xs font-medium text-gray-600">
-                {WEEK_DAYS.map((day) => (
-                  <div key={day} className="text-center">{day}</div>
-                ))}
-              </div>
+            <div className="overflow-x-auto pb-2">
+              <div className="min-w-[680px] space-y-2">
+                <div className="grid grid-cols-7 gap-2 text-xs font-medium text-gray-600">
+                  {WEEK_DAYS.map((day) => (
+                    <div key={day} className="text-center">{day}</div>
+                  ))}
+                </div>
 
-              <div className="grid grid-cols-7 gap-2">
-                {calendarCells.map((cell) => {
-                  if (!cell.day) return <div key={cell.key} className="h-20 border rounded-md bg-gray-50" />;
+                <div className="grid grid-cols-7 gap-2">
+                  {calendarCells.map((cell) => {
+                    if (!cell.day) return <div key={cell.key} className="h-24 border rounded-md bg-gray-50 md:h-20" />;
 
                   const key = dateKeyFromParts(year, month, cell.day);
                   const leave = leavesByDate.get(key);
@@ -288,15 +291,16 @@ export default function ManagerEmployeeDetailsPage() {
                     color = 'bg-gray-100 text-gray-600';
                   }
 
-                  return (
-                    <div key={cell.key} className="h-20 border rounded-md p-2 flex flex-col justify-between">
-                      <span className="text-xs font-semibold text-gray-800">{cell.day}</span>
-                      <span className={`text-[10px] rounded px-1 py-0.5 text-center ${color}`}>{label}</span>
-                    </div>
-                  );
-                })}
+                    return (
+                      <div key={cell.key} className="h-24 border rounded-md p-2 flex flex-col justify-between md:h-20">
+                        <span className="text-xs font-semibold text-gray-800">{cell.day}</span>
+                        <span className={`text-[10px] rounded px-1 py-0.5 text-center ${color}`}>{label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </>
+            </div>
           )}
         </CardContent>
       </Card>

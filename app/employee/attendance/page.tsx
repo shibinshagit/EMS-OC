@@ -347,7 +347,7 @@ export default function EmployeeAttendancePage() {
 
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <CardTitle>Monthly Activity Calendar</CardTitle>
               <CardDescription>
@@ -374,33 +374,36 @@ export default function EmployeeAttendancePage() {
         </CardHeader>
         <CardContent className="space-y-4">
           {calendarLoading ? (
-            <>
-              <div className="grid grid-cols-7 gap-2">
-                {WEEK_DAYS.map((day) => (
-                  <Skeleton key={day} className="h-4 w-full" />
-                ))}
+            <div className="overflow-x-auto pb-2">
+              <div className="min-w-[680px] space-y-2">
+                <div className="grid grid-cols-7 gap-2">
+                  {WEEK_DAYS.map((day) => (
+                    <Skeleton key={day} className="h-4 w-full" />
+                  ))}
+                </div>
+                <div className="grid grid-cols-7 gap-2">
+                  {Array.from({ length: 35 }).map((_, idx) => (
+                    <Skeleton key={`calendar-skeleton-${idx}`} className="h-24 w-full md:h-20" />
+                  ))}
+                </div>
               </div>
-              <div className="grid grid-cols-7 gap-2">
-                {Array.from({ length: 35 }).map((_, idx) => (
-                  <Skeleton key={`calendar-skeleton-${idx}`} className="h-20 w-full" />
-                ))}
-              </div>
-            </>
+            </div>
           ) : (
-            <>
-              <div className="grid grid-cols-7 gap-2 text-xs font-medium text-gray-600">
-                {WEEK_DAYS.map((day) => (
-                  <div key={day} className="text-center">
-                    {day}
-                  </div>
-                ))}
-              </div>
+            <div className="overflow-x-auto pb-2">
+              <div className="min-w-[680px] space-y-2">
+                <div className="grid grid-cols-7 gap-2 text-xs font-medium text-gray-600">
+                  {WEEK_DAYS.map((day) => (
+                    <div key={day} className="text-center">
+                      {day}
+                    </div>
+                  ))}
+                </div>
 
-              <div className="grid grid-cols-7 gap-2">
-                {calendarCells.map((cell) => {
-                  if (!cell.day) {
-                    return <div key={cell.key} className="h-20 border rounded-md bg-gray-50" />;
-                  }
+                <div className="grid grid-cols-7 gap-2">
+                  {calendarCells.map((cell) => {
+                    if (!cell.day) {
+                      return <div key={cell.key} className="h-24 border rounded-md bg-gray-50 md:h-20" />;
+                    }
 
                   const dateKey = toDateKeyFromParts(year, month, cell.day);
                   const dayOfWeek = new Date(year, month, cell.day).getDay();
@@ -411,34 +414,35 @@ export default function EmployeeAttendancePage() {
                   const todayDateKey = toDateKeyFromParts(today.getFullYear(), today.getMonth(), today.getDate());
                   const isToday = dateKey === todayDateKey;
 
-                  return (
-                    <div
-                      key={cell.key}
-                      className={`h-20 border rounded-md p-2 flex flex-col justify-between relative ${
-                        isToday
-                          ? 'cursor-pointer border-cyan-400 ring-2 ring-cyan-200 bg-cyan-50/40 hover:border-cyan-500'
-                          : 'cursor-default'
-                      }`}
-                      onClick={() => {
-                        if (!isToday) return;
-                        setSelectedDate(dateKey);
-                        setSelectedStatus(status === 'half_day' ? 'half_day' : status === 'absent' ? 'absent' : 'active');
-                      }}
-                    >
-                      {isToday && (
-                        <span className="absolute right-1.5 top-1.5 inline-flex items-center justify-center rounded-sm bg-white/80 p-0.5 text-cyan-700">
-                          <Pencil className="h-3 w-3" />
+                    return (
+                      <div
+                        key={cell.key}
+                        className={`h-24 border rounded-md p-2 flex flex-col justify-between relative md:h-20 ${
+                          isToday
+                            ? 'cursor-pointer border-cyan-400 ring-2 ring-cyan-200 bg-cyan-50/40 hover:border-cyan-500'
+                            : 'cursor-default'
+                        }`}
+                        onClick={() => {
+                          if (!isToday) return;
+                          setSelectedDate(dateKey);
+                          setSelectedStatus(status === 'half_day' ? 'half_day' : status === 'absent' ? 'absent' : 'active');
+                        }}
+                      >
+                        {isToday && (
+                          <span className="absolute right-1.5 top-1.5 inline-flex items-center justify-center rounded-sm bg-white/80 p-0.5 text-cyan-700">
+                            <Pencil className="h-3 w-3" />
+                          </span>
+                        )}
+                        <span className="text-xs font-semibold text-gray-800">{cell.day}</span>
+                        <span className={`text-[10px] rounded px-1 py-0.5 text-center ${statusClasses[status]}`}>
+                          {statusLabels[status]}
                         </span>
-                      )}
-                      <span className="text-xs font-semibold text-gray-800">{cell.day}</span>
-                      <span className={`text-[10px] rounded px-1 py-0.5 text-center ${statusClasses[status]}`}>
-                        {statusLabels[status]}
-                      </span>
-                    </div>
-                  );
-                })}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
-            </>
+            </div>
           )}
         </CardContent>
       </Card>
