@@ -232,8 +232,8 @@ export async function PATCH(request: NextRequest) {
     const isHalfDay = normalizedStatus === 'half_day' || normalizedStatus === 'half-day';
     // Persist fixed office hours in IST so browser/location differences do not shift display time.
     const checkInTime = `${dateValue}T09:00:00+05:30`;
-    const checkOutTime = isHalfDay ? `${dateValue}T13:00:00+05:30` : `${dateValue}T18:00:00+05:30`;
-    const durationMinutes = isHalfDay ? 240 : 540;
+    const checkOutTime = isHalfDay ? `${dateValue}T13:00:00+05:30` : `${dateValue}T17:00:00+05:30`;
+    const durationMinutes = isHalfDay ? 240 : 480;
 
     const result = await query(
       `INSERT INTO attendance (employee_id, check_in_time, check_out_time, duration_minutes, attendance_date)

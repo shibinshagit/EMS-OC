@@ -64,13 +64,13 @@ export async function PATCH(request: NextRequest) {
       if (normalizedStatus === 'present' || normalizedStatus === 'half_day') {
         const checkInTime =
           normalizedStatus === 'present'
-            ? `${attendance_date}T09:00:00.000Z`
-            : `${attendance_date}T09:00:00.000Z`;
+            ? `${attendance_date}T09:00:00+05:30`
+            : `${attendance_date}T09:00:00+05:30`;
         const checkOutTime =
           normalizedStatus === 'present'
-            ? `${attendance_date}T18:00:00.000Z`
-            : `${attendance_date}T13:00:00.000Z`;
-        const durationMinutes = normalizedStatus === 'present' ? 540 : 240;
+            ? `${attendance_date}T17:00:00+05:30`
+            : `${attendance_date}T13:00:00+05:30`;
+        const durationMinutes = normalizedStatus === 'present' ? 480 : 240;
 
         await client.query(
           `INSERT INTO attendance (employee_id, check_in_time, check_out_time, duration_minutes, attendance_date)
