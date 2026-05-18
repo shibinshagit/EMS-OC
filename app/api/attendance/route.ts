@@ -230,8 +230,9 @@ export async function PATCH(request: NextRequest) {
     }
 
     const isHalfDay = normalizedStatus === 'half_day' || normalizedStatus === 'half-day';
-    const checkInTime = `${dateValue}T09:00:00.000Z`;
-    const checkOutTime = isHalfDay ? `${dateValue}T13:00:00.000Z` : `${dateValue}T18:00:00.000Z`;
+    // Persist fixed office hours in IST so browser/location differences do not shift display time.
+    const checkInTime = `${dateValue}T09:00:00+05:30`;
+    const checkOutTime = isHalfDay ? `${dateValue}T13:00:00+05:30` : `${dateValue}T18:00:00+05:30`;
     const durationMinutes = isHalfDay ? 240 : 540;
 
     const result = await query(

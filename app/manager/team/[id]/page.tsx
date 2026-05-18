@@ -54,6 +54,33 @@ function dateKeyFromParts(year: number, month: number, day: number) {
   return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
 }
 
+function formatAttendanceTime(value: string | null) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+
+  const utcHours = date.getUTCHours();
+  const utcMinutes = date.getUTCMinutes();
+  const utcSeconds = date.getUTCSeconds();
+
+  // Backward compatibility: older status updates were stored as 09:00/13:00/18:00 UTC.
+  if (
+    utcMinutes === 0 &&
+    utcSeconds === 0 &&
+    (utcHours === 9 || utcHours === 13 || utcHours === 18)
+  ) {
+    return `${String(utcHours).padStart(2, '0')}:00:00`;
+  }
+
+  return date.toLocaleTimeString('en-GB', {
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+    timeZone: 'Asia/Kolkata',
+  });
+}
+
 export default function ManagerEmployeeDetailsPage() {
   const params = useParams<{ id: string }>();
   const employeeId = Number(params.id);
@@ -329,8 +356,8 @@ export default function ManagerEmployeeDetailsPage() {
                     {attendance.map((record) => (
                       <TableRow key={record.id}>
                         <TableCell className="font-medium">{dateKey(record.attendance_date)}</TableCell>
-                        <TableCell>{new Date(record.check_in_time).toLocaleTimeString()}</TableCell>
-                        <TableCell>{record.check_out_time ? new Date(record.check_out_time).toLocaleTimeString() : '-'}</TableCell>
+                        <TableCell>{formatAttendanceTime(record.check_in_time)}</TableCell>
+                        <TableCell>{formatAttendanceTime(record.check_out_time)}</TableCell>
                         <TableCell>{record.duration_minutes ?? '-'} min</TableCell>
                       </TableRow>
                     ))}
