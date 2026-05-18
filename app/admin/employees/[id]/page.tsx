@@ -72,29 +72,9 @@ function toDateKey(raw: string) {
 
 function formatAttendanceTime(value: string | null) {
   if (!value) return '-';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '-';
-
-  const utcHours = date.getUTCHours();
-  const utcMinutes = date.getUTCMinutes();
-  const utcSeconds = date.getUTCSeconds();
-
-  // Backward compatibility: older status updates were stored as 09:00/13:00/18:00 UTC.
-  if (
-    utcMinutes === 0 &&
-    utcSeconds === 0 &&
-    (utcHours === 9 || utcHours === 13 || utcHours === 18)
-  ) {
-    return `${String(utcHours).padStart(2, '0')}:00:00`;
-  }
-
-  return date.toLocaleTimeString('en-GB', {
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    hour12: false,
-    timeZone: 'Asia/Kolkata',
-  });
+  const normalized = String(value).trim();
+  const match = normalized.match(/\d{2}:\d{2}:\d{2}/);
+  return match ? match[0] : '-';
 }
 
 export default function EmployeeActivityPage() {

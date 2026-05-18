@@ -64,8 +64,8 @@ export async function GET(request: NextRequest) {
     let sql = `SELECT
        a.id,
        a.employee_id,
-       a.check_in_time,
-       a.check_out_time,
+       a.check_in_time::text as check_in_time,
+       a.check_out_time::text as check_out_time,
        a.duration_minutes,
        a.attendance_date::text as attendance_date,
        a.created_at,
