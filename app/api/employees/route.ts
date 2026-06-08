@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { query } from '@/lib/db';
-import { requireAuth, requireRole } from '@/lib/auth-helpers';
+import { requireAuth, requireCurrentUserPassword, requireRole } from '@/lib/auth-helpers';
 import bcrypt from 'bcryptjs';
 
 function isStrongPassword(value: string) {
@@ -81,6 +81,7 @@ export async function GET(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     await requireRole('super_admin');
+    await requireCurrentUserPassword(request);
 
     const employeeId = request.nextUrl.searchParams.get('id');
     if (!employeeId) {
@@ -103,7 +104,14 @@ export async function DELETE(request: NextRequest) {
     console.error('[v0] Delete employee error:', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
-      { status: error.message === 'Unauthorized' ? 401 : 403 }
+      {
+        status:
+          error.message === 'Password is required'
+            ? 400
+            : error.message === 'Unauthorized' || error.message === 'Invalid password'
+              ? 401
+              : 403,
+      }
     );
   }
 }

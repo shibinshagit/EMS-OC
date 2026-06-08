@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { PasswordConfirmDialog } from '@/components/password-confirm-dialog';
 
 interface Company {
   id: number;
@@ -21,6 +22,7 @@ export default function CompaniesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Company | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editCompany, setEditCompany] = useState<Company | null>(null);
   const [formData, setFormData] = useState({ name: '', location: '', country: '' });
@@ -42,24 +44,22 @@ export default function CompaniesPage() {
     fetchCompanies();
   }, []);
 
-  const handleDelete = async (companyId: number, companyName: string) => {
-    if (
-      !window.confirm(
-        `Delete company "${companyName}" and all linked managers, employees, and projects?`
-      )
-    ) {
-      return;
-    }
-
+  const confirmDelete = async (password: string) => {
+    if (!deleteTarget) return;
     setError('');
-    setDeletingId(companyId);
+    setDeletingId(deleteTarget.id);
     try {
-      const res = await fetch(`/api/companies?id=${companyId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/companies?id=${deleteTarget.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Failed to delete company');
       }
       await fetchCompanies();
+      setDeleteTarget(null);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -155,6 +155,18 @@ export default function CompaniesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <PasswordConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Confirm Company Deletion"
+        description={
+          deleteTarget
+            ? `Delete company "${deleteTarget.name}" and all linked managers, employees, and projects?`
+            : 'Delete this company?'
+        }
+        loading={deletingId === deleteTarget?.id}
+        onConfirm={confirmDelete}
+      />
 
       <div className="flex justify-between items-center mb-8">
         <div>
@@ -218,10 +230,13 @@ export default function CompaniesPage() {
                             size="sm"
                             variant="destructive"
                             disabled={deletingId === company.id || editingId === company.id}
-                            onClick={() => handleDelete(company.id, company.name)}
+                            onClick={() => setDeleteTarget(company)}
                           >
                             {deletingId === company.id ? 'Deleting...' : 'Delete'}
                           </Button>
+                          <Link href={`/admin/companies/${company.id}/timesheet`}>
+                            <Button size="sm" variant="secondary">Time Sheet</Button>
+                          </Link>
                         </div>
                       </TableCell>
                     </TableRow>

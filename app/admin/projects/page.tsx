@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { PasswordConfirmDialog } from '@/components/password-confirm-dialog';
 
 interface Project {
   id: number;
@@ -54,6 +55,7 @@ export default function ProjectsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Project | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editProject, setEditProject] = useState<Project | null>(null);
   const [isOngoing, setIsOngoing] = useState(false);
@@ -101,20 +103,22 @@ export default function ProjectsPage() {
     fetchMeta();
   }, []);
 
-  const handleDelete = async (projectId: number, projectName: string) => {
-    if (!window.confirm(`Delete project "${projectName}"? This action cannot be undone.`)) {
-      return;
-    }
-
+  const confirmDelete = async (password: string) => {
+    if (!deleteTarget) return;
     setError('');
-    setDeletingId(projectId);
+    setDeletingId(deleteTarget.id);
     try {
-      const res = await fetch(`/api/projects?id=${projectId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/projects?id=${deleteTarget.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Failed to delete project');
       }
       await fetchProjects();
+      setDeleteTarget(null);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -330,6 +334,18 @@ export default function ProjectsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <PasswordConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Confirm Project Deletion"
+        description={
+          deleteTarget
+            ? `Delete project "${deleteTarget.name}"? This action cannot be undone.`
+            : 'Delete this project?'
+        }
+        loading={deletingId === deleteTarget?.id}
+        onConfirm={confirmDelete}
+      />
 
       <div className="flex justify-between items-center mb-8">
         <div>
@@ -402,7 +418,7 @@ export default function ProjectsPage() {
                             size="sm"
                             variant="destructive"
                             disabled={deletingId === project.id || editingId === project.id}
-                            onClick={() => handleDelete(project.id, project.name)}
+                            onClick={() => setDeleteTarget(project)}
                           >
                             {deletingId === project.id ? 'Deleting...' : 'Delete'}
                           </Button>

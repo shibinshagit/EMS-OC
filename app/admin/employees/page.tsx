@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Plus } from 'lucide-react';
+import { PasswordConfirmDialog } from '@/components/password-confirm-dialog';
 
 interface Employee {
   id: number;
@@ -39,6 +40,7 @@ export default function EmployeesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Employee | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editEmployee, setEditEmployee] = useState<Employee | null>(null);
   const [formData, setFormData] = useState({
@@ -79,20 +81,22 @@ export default function EmployeesPage() {
     fetchCompanies();
   }, []);
 
-  const handleDelete = async (employeeId: number, employeeName: string) => {
-    if (!window.confirm(`Delete employee "${employeeName}"? This action cannot be undone.`)) {
-      return;
-    }
-
+  const confirmDelete = async (password: string) => {
+    if (!deleteTarget) return;
     setError('');
-    setDeletingId(employeeId);
+    setDeletingId(deleteTarget.id);
     try {
-      const res = await fetch(`/api/employees?id=${employeeId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/employees?id=${deleteTarget.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Failed to delete employee');
       }
       await fetchEmployees();
+      setDeleteTarget(null);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -240,6 +244,18 @@ export default function EmployeesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <PasswordConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Confirm Employee Deletion"
+        description={
+          deleteTarget
+            ? `Delete employee "${deleteTarget.full_name}"? This action cannot be undone.`
+            : 'Delete this employee?'
+        }
+        loading={deletingId === deleteTarget?.id}
+        onConfirm={confirmDelete}
+      />
 
       <div className="flex items-center justify-between rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div>
@@ -318,7 +334,7 @@ export default function EmployeesPage() {
                             size="sm"
                             variant="destructive"
                             disabled={deletingId === employee.id || editingId === employee.id}
-                            onClick={() => handleDelete(employee.id, employee.full_name)}
+                            onClick={() => setDeleteTarget(employee)}
                           >
                             {deletingId === employee.id ? 'Deleting...' : 'Delete'}
                           </Button>

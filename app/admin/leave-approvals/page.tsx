@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PasswordConfirmDialog } from '@/components/password-confirm-dialog';
 
 interface LeaveRequest {
   id: number;
@@ -21,6 +22,7 @@ export default function LeaveApprovalsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<LeaveRequest | null>(null);
 
   useEffect(() => {
     fetchLeaves();
@@ -63,14 +65,15 @@ export default function LeaveApprovalsPage() {
     }
   };
 
-  const handleDelete = async (id: number) => {
-    const confirmed = window.confirm('Delete this leave record permanently?');
-    if (!confirmed) return;
+  const confirmDelete = async (password: string) => {
+    if (!deleteTarget) return;
 
-    setActionLoading(id);
+    setActionLoading(deleteTarget.id);
     try {
-      const res = await fetch(`/api/leave-requests?id=${id}`, {
+      const res = await fetch(`/api/leave-requests?id=${deleteTarget.id}`, {
         method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
       });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
@@ -78,6 +81,7 @@ export default function LeaveApprovalsPage() {
       }
       await fetchLeaves();
       setError('');
+      setDeleteTarget(null);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -93,6 +97,18 @@ export default function LeaveApprovalsPage() {
 
   return (
     <div>
+      <PasswordConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Confirm Leave Deletion"
+        description={
+          deleteTarget
+            ? `Delete leave record for "${deleteTarget.employee_name}" on ${new Date(deleteTarget.leave_date).toLocaleDateString()} permanently?`
+            : 'Delete this leave record permanently?'
+        }
+        loading={actionLoading === deleteTarget?.id}
+        onConfirm={confirmDelete}
+      />
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900">Leave Request Management</h1>
         <p className="text-gray-600 mt-1">Review and approve/reject leave requests</p>
@@ -209,7 +225,7 @@ export default function LeaveApprovalsPage() {
                             size="sm"
                             variant="destructive"
                             disabled={actionLoading === leave.id}
-                            onClick={() => handleDelete(leave.id)}
+                            onClick={() => setDeleteTarget(leave)}
                           >
                             Delete
                           </Button>

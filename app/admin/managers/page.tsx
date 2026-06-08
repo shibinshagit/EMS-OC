@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
+import { PasswordConfirmDialog } from '@/components/password-confirm-dialog';
 
 interface Manager {
   id: number;
@@ -30,6 +31,7 @@ export default function ManagersPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Manager | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editManager, setEditManager] = useState<Manager | null>(null);
   const [formData, setFormData] = useState({
@@ -69,20 +71,22 @@ export default function ManagersPage() {
     fetchCompanies();
   }, []);
 
-  const handleDelete = async (managerId: number, managerName: string) => {
-    if (!window.confirm(`Delete manager "${managerName}"? This action cannot be undone.`)) {
-      return;
-    }
-
+  const confirmDelete = async (password: string) => {
+    if (!deleteTarget) return;
     setError('');
-    setDeletingId(managerId);
+    setDeletingId(deleteTarget.id);
     try {
-      const res = await fetch(`/api/managers?id=${managerId}`, { method: 'DELETE' });
+      const res = await fetch(`/api/managers?id=${deleteTarget.id}`, {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password }),
+      });
       if (!res.ok) {
         const data = await res.json().catch(() => ({}));
         throw new Error(data.error || 'Failed to delete manager');
       }
       await fetchManagers();
+      setDeleteTarget(null);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -220,6 +224,18 @@ export default function ManagersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      <PasswordConfirmDialog
+        open={!!deleteTarget}
+        onOpenChange={(open) => !open && setDeleteTarget(null)}
+        title="Confirm Manager Deletion"
+        description={
+          deleteTarget
+            ? `Delete manager "${deleteTarget.full_name}"? This action cannot be undone.`
+            : 'Delete this manager?'
+        }
+        loading={deletingId === deleteTarget?.id}
+        onConfirm={confirmDelete}
+      />
 
       <div className="flex justify-between items-center mb-8">
         <div>
@@ -290,7 +306,7 @@ export default function ManagersPage() {
                             size="sm"
                             variant="destructive"
                             disabled={deletingId === manager.id || editingId === manager.id}
-                            onClick={() => handleDelete(manager.id, manager.full_name)}
+                            onClick={() => setDeleteTarget(manager)}
                           >
                             {deletingId === manager.id ? 'Deleting...' : 'Delete'}
                           </Button>

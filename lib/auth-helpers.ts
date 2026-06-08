@@ -1,5 +1,8 @@
 import { getServerSession } from 'next-auth';
 import { authOptions } from './auth';
+import { NextRequest } from 'next/server';
+import { query } from './db';
+import bcrypt from 'bcryptjs';
 
 export async function requireAuth() {
   const session = await getServerSession(authOptions);
@@ -36,5 +39,28 @@ export async function requireCompanyAccess(companyId: number) {
     throw new Error('Access denied');
   }
   
+  return session;
+}
+
+export async function requireCurrentUserPassword(request: NextRequest) {
+  const session = await requireAuth();
+  const body = await request.json().catch(() => ({}));
+  const password = typeof body?.password === 'string' ? body.password.trim() : '';
+
+  if (!password) {
+    throw new Error('Password is required');
+  }
+
+  const userId = Number((session.user as any).id);
+  const result = await query('SELECT password_hash FROM users WHERE id = $1', [userId]);
+  if (result.rows.length === 0) {
+    throw new Error('Unauthorized');
+  }
+
+  const isValid = await bcrypt.compare(password, result.rows[0].password_hash);
+  if (!isValid) {
+    throw new Error('Invalid password');
+  }
+
   return session;
 }

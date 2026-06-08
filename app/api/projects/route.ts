@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getClient, query } from '@/lib/db';
-import { requireAuth, requireRole } from '@/lib/auth-helpers';
+import { requireAuth, requireCurrentUserPassword, requireRole } from '@/lib/auth-helpers';
 
 export async function POST(request: NextRequest) {
   try {
@@ -156,6 +156,7 @@ export async function GET(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     await requireRole('super_admin');
+    await requireCurrentUserPassword(request);
 
     const projectId = request.nextUrl.searchParams.get('id');
     if (!projectId) {
@@ -176,7 +177,14 @@ export async function DELETE(request: NextRequest) {
     console.error('[v0] Delete project error:', error);
     return NextResponse.json(
       { error: error.message || 'Internal server error' },
-      { status: error.message === 'Unauthorized' ? 401 : 403 }
+      {
+        status:
+          error.message === 'Password is required'
+            ? 400
+            : error.message === 'Unauthorized' || error.message === 'Invalid password'
+              ? 401
+              : 403,
+      }
     );
   }
 }
